@@ -37,7 +37,9 @@ ParameterManager::ParameterManager(Vehicle *vehicle)
     : QObject(vehicle)
     , _vehicle(vehicle)
     , _logReplay(!vehicle->vehicleLinkManager()->primaryLink().expired() && vehicle->vehicleLinkManager()->primaryLink().lock()->isLogReplay())
-    , _tryftp(vehicle->apmFirmware())
+    //, _tryftp(vehicle->apmFirmware())
+    // 验证用：强制绕过 FTP，参数直接走传统 PARAM_REQUEST_LIST
+    , _tryftp(false)
 {
     // qCDebug(ParameterManagerLog) << Q_FUNC_INFO << this;
 
