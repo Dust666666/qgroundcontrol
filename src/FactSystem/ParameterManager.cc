@@ -37,7 +37,7 @@ ParameterManager::ParameterManager(Vehicle *vehicle)
     : QObject(vehicle)
     , _vehicle(vehicle)
     , _logReplay(!vehicle->vehicleLinkManager()->primaryLink().expired() && vehicle->vehicleLinkManager()->primaryLink().lock()->isLogReplay())
-    , _tryftp(vehicle->apmFirmware())
+    , _tryftp(false)  // 强制禁用 FTP 参数同步，避免局域网转发时卡死
 {
     // qCDebug(ParameterManagerLog) << Q_FUNC_INFO << this;
 
@@ -197,10 +197,11 @@ void ParameterManager::_handleParamValue(int componentId, const QString &paramet
 
     // ArduPilot has this strange behavior of streaming parameters that we didn't ask for. This even happens before it responds to the
     // PARAM_REQUEST_LIST. We disregard any of this until the initial request is responded to.
-    if ((parameterIndex == 65535) && (parameterName != QStringLiteral("_HASH_CHECK")) && _initialRequestTimeoutTimer.isActive()) {
-        qCDebug(ParameterManagerVerbose1Log) << "Disregarding unrequested param prior to initial list response" << parameterName;
-        return;
-    }
+    // 注释掉这个逻辑以支持局域网转发场景，避免主动推送的参数被丢弃导致卡死
+    // if ((parameterIndex == 65535) && (parameterName != QStringLiteral("_HASH_CHECK")) && _initialRequestTimeoutTimer.isActive()) {
+    //     qCDebug(ParameterManagerVerbose1Log) << "Disregarding unrequested param prior to initial list response" << parameterName;
+    //     return;
+    // }
 
     _initialRequestTimeoutTimer.stop();
 
