@@ -37,9 +37,8 @@ ParameterManager::ParameterManager(Vehicle *vehicle)
     : QObject(vehicle)
     , _vehicle(vehicle)
     , _logReplay(!vehicle->vehicleLinkManager()->primaryLink().expired() && vehicle->vehicleLinkManager()->primaryLink().lock()->isLogReplay())
-    //, _tryftp(vehicle->apmFirmware())
-    // 验证用：强制绕过 FTP，参数直接走传统 PARAM_REQUEST_LIST
-    , _tryftp(false)
+    , _tryftp(vehicle->px4Firmware())
+    //让 FTP 参数下载只对 PX4 生效，ArduPilot 退回 4.4 的经典 PARAM_REQUEST_LIST 行为
 {
     // qCDebug(ParameterManagerLog) << Q_FUNC_INFO << this;
 
