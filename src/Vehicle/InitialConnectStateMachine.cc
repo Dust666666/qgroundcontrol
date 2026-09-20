@@ -261,9 +261,12 @@ void InitialConnectStateMachine::_protocolVersionRequestMessageHandler(void* res
 void InitialConnectStateMachine::_stateRequestCompInfo(StateMachine* stateMachine)
 {
     InitialConnectStateMachine* connectMachine  = static_cast<InitialConnectStateMachine*>(stateMachine);
-    // 验证用：跳过组件信息 FTP（局域网转发下易假死，会阻塞整个初始连接）
-    qCDebug(InitialConnectStateMachineLog) << "_stateRequestCompInfo SKIPPED for debug";
-    connectMachine->advance();
+    Vehicle*                    vehicle         = connectMachine->_vehicle;
+
+    qCDebug(InitialConnectStateMachineLog) << "_stateRequestCompInfo";
+    connect(vehicle->_componentInformationManager, &ComponentInformationManager::progressUpdate, connectMachine,
+            &InitialConnectStateMachine::gotProgressUpdate);
+    vehicle->_componentInformationManager->requestAllComponentInformation(_stateRequestCompInfoComplete, connectMachine);
 }
 
 void InitialConnectStateMachine::_stateRequestStandardModes(StateMachine *stateMachine)

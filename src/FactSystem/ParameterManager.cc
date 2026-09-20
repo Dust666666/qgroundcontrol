@@ -37,8 +37,7 @@ ParameterManager::ParameterManager(Vehicle *vehicle)
     : QObject(vehicle)
     , _vehicle(vehicle)
     , _logReplay(!vehicle->vehicleLinkManager()->primaryLink().expired() && vehicle->vehicleLinkManager()->primaryLink().lock()->isLogReplay())
-    , _tryftp(vehicle->px4Firmware())
-    //让 FTP 参数下载只对 PX4 生效，ArduPilot 退回 4.4 的经典 PARAM_REQUEST_LIST 行为
+    , _tryftp(vehicle->apmFirmware())
 {
     // qCDebug(ParameterManagerLog) << Q_FUNC_INFO << this;
 
@@ -419,7 +418,7 @@ void ParameterManager::_ftpDownloadComplete(const QString &fileName, const QStri
         qCDebug(ParameterManagerLog) << "ParameterManager-ftp: Too many retries - Start Conventional Parameter Download";
     } else {
         qCDebug(ParameterManagerLog) << "ParameterManager-ftp Retry:" << _initialRequestRetryCount;
-        continueWithDefaultParameterdownload = false;
+        continueWithDefaultParameterdownload = true;
     }
 
     if (continueWithDefaultParameterdownload) {
