@@ -37,6 +37,8 @@ ParameterManager::ParameterManager(Vehicle *vehicle)
     : QObject(vehicle)
     , _vehicle(vehicle)
     , _logReplay(!vehicle->vehicleLinkManager()->primaryLink().expired() && vehicle->vehicleLinkManager()->primaryLink().lock()->isLogReplay())
+    //, _tryftp(vehicle->apmFirmware()) ------原来版本
+    // 强制绕过 FTP，参数直接走传统 PARAM_REQUEST_LIST
     , _tryftp(false)
 {
     // qCDebug(ParameterManagerLog) << Q_FUNC_INFO << this;
@@ -418,7 +420,7 @@ void ParameterManager::_ftpDownloadComplete(const QString &fileName, const QStri
         qCDebug(ParameterManagerLog) << "ParameterManager-ftp: Too many retries - Start Conventional Parameter Download";
     } else {
         qCDebug(ParameterManagerLog) << "ParameterManager-ftp Retry:" << _initialRequestRetryCount;
-        continueWithDefaultParameterdownload = true;
+        continueWithDefaultParameterdownload = false;
     }
 
     if (continueWithDefaultParameterdownload) {
