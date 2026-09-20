@@ -37,9 +37,7 @@ ParameterManager::ParameterManager(Vehicle *vehicle)
     : QObject(vehicle)
     , _vehicle(vehicle)
     , _logReplay(!vehicle->vehicleLinkManager()->primaryLink().expired() && vehicle->vehicleLinkManager()->primaryLink().lock()->isLogReplay())
-    //, _tryftp(vehicle->apmFirmware()) ------原来版本
-    // 强制绕过 FTP，参数直接走传统 PARAM_REQUEST_LIST
-    , _tryftp(false)
+    , _tryftp(vehicle->apmFirmware())
 {
     // qCDebug(ParameterManagerLog) << Q_FUNC_INFO << this;
 
@@ -1152,6 +1150,16 @@ void ParameterManager::_checkInitialLoadComplete()
 
 void ParameterManager::_initialRequestTimeout()
 {
+    if (_tryftp) {
+        // MAVFTP parameter download stalled (e.g. on a forwarded or lossy link).
+        // Cancel it and fall through to the conventional PARAM_REQUEST_LIST path.
+        _vehicle->ftpManager()->cancelDownload();
+        (void) disconnect(_vehicle->ftpManager(), &FTPManager::downloadComplete, this, &ParameterManager::_ftpDownloadComplete);
+        (void) disconnect(_vehicle->ftpManager(), &FTPManager::commandProgress, this, &ParameterManager::_ftpDownloadProgress);
+        _tryftp = false;
+        _initialRequestRetryCount = 0;
+    }
+
     if (!_disableAllRetries && (++_initialRequestRetryCount <= _maxInitialRequestListRetry)) {
         qCDebug(ParameterManagerLog) << _logVehiclePrefix(-1) << "Retrying initial parameter request list";
         refreshAllParameters();
