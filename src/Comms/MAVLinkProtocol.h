@@ -104,6 +104,7 @@ private:
 
     void _forward(const mavlink_message_t &message);
     void _forwardSupport(const mavlink_message_t &message);
+    void _forwardToVehicleLinks(const mavlink_message_t &message);
 
     void _updateCounters(uint8_t mavlinkChannel, const mavlink_message_t &message);
     bool _updateStatus(LinkInterface *link, const SharedLinkInterfacePtr linkPtr, uint8_t mavlinkChannel, const mavlink_message_t &message);

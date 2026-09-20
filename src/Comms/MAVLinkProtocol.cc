@@ -121,10 +121,17 @@ void MAVLinkProtocol::receiveBytes(LinkInterface *link, const QByteArray &data)
 
         _updateVersion(link, mavlinkChannel);
         _updateCounters(mavlinkChannel, message);
-        if (!linkPtr->linkConfiguration()->isForwarding()) {
-            _forward(message);
+        //if (!linkPtr->linkConfiguration()->isForwarding()) {
+        //    _forward(message);
+        //    _forwardSupport(message);
+        //}
+        if (linkPtr->linkConfiguration()->isForwarding()) {
+            _forwardToVehicleLinks(message);   // MP → 飞控（反向）
+        } else {
+            _forward(message);                 // 飞控 → MP（正向）
             _forwardSupport(message);
         }
+        
         _logData(link, message);
 
         if (!_updateStatus(link, linkPtr, mavlinkChannel, message)) {
@@ -221,6 +228,28 @@ void MAVLinkProtocol::_forwardSupport(const mavlink_message_t &message)
     const uint16_t len = mavlink_msg_to_send_buffer(buf, &message);
     (void) forwardingSupportLink->writeBytesThreadSafe(reinterpret_cast<const char*>(buf), len);
 }
+
+void MAVLinkProtocol::_forwardToVehicleLinks(const mavlink_message_t &message)
+{
+    if (message.msgid == MAVLINK_MSG_ID_SETUP_SIGNING) {
+        return;
+    }
+
+    if (!SettingsManager::instance()->mavlinkSettings()->forwardMavlink()->rawValue().toBool()) {
+        return;
+    }
+
+    // 反向转发：把来自"转发链路(MP)"的消息写回所有"非转发"的飞控主链路
+    const QList<SharedLinkInterfacePtr> links = LinkManager::instance()->links();
+    for (const SharedLinkInterfacePtr &link : links) {
+        if (link && !link->linkConfiguration()->isForwarding()) {
+            uint8_t buf[MAVLINK_MAX_PACKET_LEN]{};
+            const uint16_t len = mavlink_msg_to_send_buffer(buf, &message);
+            (void) link->writeBytesThreadSafe(reinterpret_cast<const char*>(buf), len);
+        }
+    }
+}
+
 
 void MAVLinkProtocol::_logData(LinkInterface *link, const mavlink_message_t &message)
 {
