@@ -37,9 +37,7 @@ ParameterManager::ParameterManager(Vehicle *vehicle)
     : QObject(vehicle)
     , _vehicle(vehicle)
     , _logReplay(!vehicle->vehicleLinkManager()->primaryLink().expired() && vehicle->vehicleLinkManager()->primaryLink().lock()->isLogReplay())
-    //, _tryftp(vehicle->apmFirmware()) ------原来版本
-    // 强制绕过 FTP，参数直接走传统 PARAM_REQUEST_LIST
-    , _tryftp(false)
+    , _tryftp(vehicle->apmFirmware())
 {
     // qCDebug(ParameterManagerLog) << Q_FUNC_INFO << this;
 
@@ -56,6 +54,10 @@ ParameterManager::ParameterManager(Vehicle *vehicle)
     _waitingParamTimeoutTimer.setInterval(3000);
     (void) connect(&_waitingParamTimeoutTimer, &QTimer::timeout, this, &ParameterManager::_waitingParamTimeout);
 
+
+    _ftpWatchdogTimer.setSingleShot(true);
+    _ftpWatchdogTimer.setInterval(10000);
+    (void) connect(&_ftpWatchdogTimer, &QTimer::timeout, this, &ParameterManager::_ftpWatchdogTimeout);
     // Ensure the cache directory exists
     (void) QFileInfo(QSettings().fileName()).dir().mkdir("ParamCache");
 }
@@ -394,6 +396,7 @@ void ParameterManager::_factRawValueUpdated(const QVariant &rawValue)
 
 void ParameterManager::_ftpDownloadComplete(const QString &fileName, const QString &errorMsg)
 {
+    _ftpWatchdogTimer.stop();
     bool continueWithDefaultParameterdownload = true;
     bool immediateRetry = false;
 
@@ -446,7 +449,18 @@ void ParameterManager::_ftpDownloadProgress(float progress)
     _setLoadProgress(static_cast<double>(progress));
     if (progress > 0.001) {
         _initialRequestTimeoutTimer.stop();
+        _ftpWatchdogTimer.start();   // 有进展就续期，不误杀正常 FTP
     }
+}
+
+void ParameterManager::_ftpWatchdogTimeout()
+{
+    qCDebug(ParameterManagerLog) << "ParameterManager-ftp watchdog: no progress within timeout, falling back to conventional parameter download";
+    _vehicle->ftpManager()->cancelDownload();
+    _tryftp = false;
+    _initialRequestRetryCount = 0;
+    _ftpWatchdogTimer.stop();
+    _initialRequestTimeout();   // 立刻改走 PARAM_REQUEST_LIST
 }
 
 void ParameterManager::refreshAllParameters(uint8_t componentId)
@@ -480,6 +494,7 @@ void ParameterManager::refreshAllParameters(uint8_t componentId)
                                  QStringLiteral(""),
                                  false /* No filesize check */)) {
             (void) connect(ftpManager, &FTPManager::commandProgress, this, &ParameterManager::_ftpDownloadProgress);
+            _ftpWatchdogTimer.start();
         } else {
             qCWarning(ParameterManagerLog) << "ParameterManager::refreshallParameters FTPManager::download returned failure";
             (void) disconnect(ftpManager, &FTPManager::downloadComplete, this, &ParameterManager::_ftpDownloadComplete);

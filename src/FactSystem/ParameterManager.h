@@ -137,6 +137,8 @@ private:
     void _checkInitialLoadComplete();
     void _ftpDownloadComplete(const QString &fileName, const QString &errorMsg);
     void _ftpDownloadProgress(float progress);
+    void _ftpWatchdogTimeout();
+    
     /// Parse the binary parameter file and inject the parameters in the qgc fact system.
     /// See: https://github.com/ArduPilot/ardupilot/tree/master/libraries/AP_Filesystem
     bool _parseParamFile(const QString &filename);
@@ -193,6 +195,7 @@ private:
 
     QTimer _initialRequestTimeoutTimer;
     QTimer _waitingParamTimeoutTimer;
+    QTimer _ftpWatchdogTimer;
 
     Fact _defaultFact;   ///< Used to return default fact, when parameter not found
 
