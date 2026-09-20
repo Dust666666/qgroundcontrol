@@ -239,16 +239,21 @@ void MAVLinkProtocol::_forwardToVehicleLinks(const mavlink_message_t &message)
         return;
     }
 
-    // 反向转发：把来自"转发链路(MP)"的消息写回所有"非转发"的飞控主链路
+    // 关键：把中继消息的发送方 sysid 改成 QGC 自身，
+    // 避免飞控 SYSID_ENFORCE/SYSID_MYGCS 把来自上位机(MP)的写参数指令当成未授权 GCS 拒绝。
+    mavlink_message_t fwd = message;
+    fwd.sysid = static_cast<uint8_t>(getSystemId());
+
     const QList<SharedLinkInterfacePtr> links = LinkManager::instance()->links();
     for (const SharedLinkInterfacePtr &link : links) {
         if (link && !link->linkConfiguration()->isForwarding()) {
             uint8_t buf[MAVLINK_MAX_PACKET_LEN]{};
-            const uint16_t len = mavlink_msg_to_send_buffer(buf, &message);
+            const uint16_t len = mavlink_msg_to_send_buffer(buf, &fwd);
             (void) link->writeBytesThreadSafe(reinterpret_cast<const char*>(buf), len);
         }
     }
 }
+
 
 
 void MAVLinkProtocol::_logData(LinkInterface *link, const mavlink_message_t &message)
