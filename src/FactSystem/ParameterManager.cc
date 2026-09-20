@@ -37,7 +37,7 @@ ParameterManager::ParameterManager(Vehicle *vehicle)
     : QObject(vehicle)
     , _vehicle(vehicle)
     , _logReplay(!vehicle->vehicleLinkManager()->primaryLink().expired() && vehicle->vehicleLinkManager()->primaryLink().lock()->isLogReplay())
-    , _tryftp(vehicle->apmFirmware())
+    , _tryftp(false)
 {
     // qCDebug(ParameterManagerLog) << Q_FUNC_INFO << this;
 
